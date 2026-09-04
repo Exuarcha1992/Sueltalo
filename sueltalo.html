@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Suéltalo</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Suéltalo">
+<meta name="theme-color" content="#171331">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23171331'/%3E%3Ccircle cx='50' cy='42' r='24' fill='%23f2a341'/%3E%3Cpath d='M50 60a15 15 0 0 0 15-15V27a15 15 0 0 0-30 0v18a15 15 0 0 0 15 15Z' fill='%23171331' transform='scale(0.6) translate(33,20)'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23171331'/%3E%3Ccircle cx='50' cy='42' r='24' fill='%23f2a341'/%3E%3C/svg%3E">
+<link rel="manifest" id="manifestLink" href="data:application/manifest+json,%7B%7D">
+<style>
+  :root{
+    --bg-0:#171331;
+    --bg-1:#211c46;
+    --ink:#f2eee6;
+    --ink-dim:#a79fce;
+    --spark:#f2a341;
+    --spark-dim:#8a5a1f;
+    --mint:#5fd9a8;
+    --danger:#e5546b;
+    --radius:28px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 800px at 50% -10%, var(--bg-1), var(--bg-0) 60%);
+    color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100dvh;
+    padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom);
+    overflow-x:hidden;
+  }
+  .brand{
+    margin-top:max(28px, env(safe-area-inset-top));
+    text-align:center;
+  }
+  .brand h1{
+    font-family:Georgia,"Iowan Old Style","Times New Roman",serif;
+    font-weight:600;
+    font-size:30px;
+    letter-spacing:0.2px;
+    margin:0;
+  }
+  .brand p{
+    margin:6px 0 0;
+    color:var(--ink-dim);
+    font-size:14.5px;
+  }
+
+  .stage{
+    flex:1;
+    width:100%;
+    max-width:420px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:22px;
+  }
+
+  .rec-wrap{
+    position:relative;
+    width:220px;
+    height:220px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    border:1.5px solid rgba(242,163,65,0.25);
+    transform:scale(1);
+    opacity:0;
+  }
+  .ring.pulse{
+    animation:pulse 1.6s ease-out infinite;
+  }
+  @keyframes pulse{
+    0%{ transform:scale(0.86); opacity:0.65; }
+    100%{ transform:scale(1.35); opacity:0; }
+  }
+
+  #recBtn{
+    position:relative;
+    z-index:2;
+    width:168px;
+    height:168px;
+    border-radius:50%;
+    border:none;
+    background:radial-gradient(circle at 32% 28%, #ffc478, var(--spark) 60%, var(--spark-dim) 100%);
+    box-shadow:0 18px 40px -12px rgba(242,163,65,0.55), inset 0 -6px 14px rgba(0,0,0,0.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:transform 0.15s ease;
+  }
+  #recBtn:active{ transform:scale(0.96); }
+  #recBtn.recording{
+    background:radial-gradient(circle at 32% 28%, #ff8b7a, var(--danger) 60%, #9c2f40 100%);
+    box-shadow:0 18px 40px -12px rgba(229,84,107,0.55), inset 0 -6px 14px rgba(0,0,0,0.2);
+  }
+  #recBtn svg{ width:56px; height:56px; }
+
+  .status{
+    min-height:26px;
+    font-size:15px;
+    color:var(--ink-dim);
+    text-align:center;
+  }
+  .status.live{ color:var(--danger); font-weight:600; }
+  .status.ok{ color:var(--mint); font-weight:600; }
+
+  .hint{
+    color:var(--ink-dim);
+    font-size:13px;
+    text-align:center;
+    max-width:260px;
+    line-height:1.5;
+  }
+
+  .log{
+    width:100%;
+    max-width:420px;
+    padding-bottom:28px;
+  }
+  .log h2{
+    font-size:12.5px;
+    color:var(--ink-dim);
+    font-weight:600;
+    margin:0 0 10px;
+  }
+  .log ul{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .log li{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:16px;
+    padding:12px 14px;
+    font-size:13.5px;
+    color:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .log li time{
+    color:var(--ink-dim);
+    font-size:11.5px;
+    white-space:nowrap;
+  }
+  .badge{
+    font-size:11px;
+    padding:3px 8px;
+    border-radius:100px;
+    font-weight:600;
+  }
+  .badge.sent{ background:rgba(95,217,168,0.15); color:var(--mint); }
+  .badge.err{ background:rgba(229,84,107,0.15); color:var(--danger); }
+</style>
+</head>
+<body>
+
+  <div class="brand">
+    <h1>Suéltalo</h1>
+    <p>Habla. Se guarda. Sigues con lo tuyo.</p>
+  </div>
+
+  <button id="installBtn" style="display:none; margin-top:14px; background:rgba(242,163,65,0.12); color:var(--spark); border:1px solid rgba(242,163,65,0.4); border-radius:100px; padding:9px 18px; font-size:13.5px; font-weight:600; cursor:pointer;">
+    ⬇ Instalar en el celular
+  </button>
+
+  <div class="stage">
+    <div class="rec-wrap">
+      <div class="ring" id="ring"></div>
+      <button id="recBtn" aria-label="Grabar idea">
+        <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="#171331" stroke-width="1.8">
+          <path d="M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5.5A3.5 3.5 0 0 0 12 15Z"/>
+          <path d="M19 11.5a7 7 0 0 1-14 0"/>
+          <path d="M12 18.5V22"/>
+          <path d="M8.5 22h7"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="status" id="status">Toca para soltar la idea</div>
+    <div class="hint">Un solo toque. No hace falta explicar nada más, solo habla.</div>
+  </div>
+
+  <div class="log">
+    <h2>ÚLTIMAS CAPTURAS</h2>
+    <ul id="logList"></ul>
+  </div>
+
+<script>
+  const WEBHOOK_URL = "https://hook.us2.make.com/sguht7h5sndp6mqsymerjsnywf7yczd1";
+
+  const recBtn = document.getElementById('recBtn');
+  const ring = document.getElementById('ring');
+  const statusEl = document.getElementById('status');
+  const logList = document.getElementById('logList');
+
+  let mediaRecorder = null;
+  let chunks = [];
+  let isRecording = false;
+  let stream = null;
+
+  function addLogEntry(state){
+    const li = document.createElement('li');
+    const time = new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
+    li.innerHTML = `
+      <span>Nota de voz</span>
+      <span style="display:flex; align-items:center; gap:8px;">
+        <time>${time}</time>
+        <span class="badge ${state === 'ok' ? 'sent' : 'err'}">${state === 'ok' ? 'Enviada' : 'Error'}</span>
+      </span>`;
+    logList.prepend(li);
+  }
+
+  async function startRecording(){
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }catch(err){
+      statusEl.textContent = "No pude acceder al micrófono";
+      statusEl.className = "status";
+      return;
+    }
+
+    chunks = [];
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    mediaRecorder.onstop = handleStop;
+
+    mediaRecorder.start();
+    isRecording = true;
+    recBtn.classList.add('recording');
+    ring.classList.add('pulse');
+    statusEl.textContent = "Escuchando… toca de nuevo para soltar";
+    statusEl.className = "status live";
+  }
+
+  function stopRecording(){
+    if (mediaRecorder && isRecording){
+      mediaRecorder.stop();
+      isRecording = false;
+      recBtn.classList.remove('recording');
+      ring.classList.remove('pulse');
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    }
+  }
+
+  async function handleStop(){
+    statusEl.textContent = "Enviando…";
+    statusEl.className = "status";
+
+    const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
+
+    if (blob.size < 500){
+      statusEl.textContent = "Muy corto, inténtalo de nuevo";
+      statusEl.className = "status";
+      return;
+    }
+
+    const form = new FormData();
+    form.append('audio', blob, `sueltalo-${Date.now()}.webm`);
+    form.append('source', 'pwa');
+    form.append('capturedAt', new Date().toISOString());
+
+    try{
+      const res = await fetch(WEBHOOK_URL, { method: 'POST', body: form });
+      if (!res.ok) throw new Error('bad status');
+      statusEl.textContent = "Listo, quedó guardada";
+      statusEl.className = "status ok";
+      addLogEntry('ok');
+    }catch(err){
+      statusEl.textContent = "No se pudo enviar, revisa tu conexión";
+      statusEl.className = "status";
+      addLogEntry('err');
+    }
+
+    setTimeout(() => {
+      if (!isRecording){
+        statusEl.textContent = "Toca para soltar la idea";
+        statusEl.className = "status";
+      }
+    }, 2600);
+  }
+
+  recBtn.addEventListener('click', () => {
+    if (!isRecording) startRecording();
+    else stopRecording();
+  });
+
+  // --- Manifest din\u00e1mico (para que la app tenga \u00edcono y nombre propio al instalarla) ---
+  const manifest = {
+    name: "Suéltalo",
+    short_name: "Suéltalo",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#171331",
+    theme_color: "#171331",
+    icons: [{
+      src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23171331'/%3E%3Ccircle cx='50' cy='42' r='24' fill='%23f2a341'/%3E%3C/svg%3E",
+      sizes: "192x192",
+      type: "image/svg+xml"
+    }]
+  };
+  document.getElementById('manifestLink').href =
+    'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifest));
+
+  // --- Service worker (necesario para que Chrome ofrezca "Instalar app") ---
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => self.clients.claim());
+      self.addEventListener('fetch', e => {});
+    `;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(() => {});
+  }
+
+  // --- Bot\u00f3n de instalaci\u00f3n (Android/Chrome) ---
+  const installBtn = document.getElementById('installBtn');
+  let deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'inline-block';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBtn.style.display = 'none';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installBtn.style.display = 'none';
+  });
+</script>
+</body>
+</html>
