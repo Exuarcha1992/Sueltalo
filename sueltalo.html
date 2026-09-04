@@ -503,7 +503,7 @@
     try{
       const tokenRes = await fetch(TOKEN_URL, { method: 'POST' });
       const tokenData = await tokenRes.json();
-      const ephemeralKey = tokenData?.client_secret?.value;
+      const ephemeralKey = tokenData?.value || tokenData?.client_secret?.value;
       if (!ephemeralKey) throw new Error('sin token');
 
       pc = new RTCPeerConnection();
