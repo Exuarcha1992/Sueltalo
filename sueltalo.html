@@ -173,6 +173,69 @@
   }
   .badge.sent{ background:rgba(95,217,168,0.15); color:var(--mint); }
   .badge.err{ background:rgba(229,84,107,0.15); color:var(--danger); }
+
+  .mode-tabs{
+    display:flex;
+    gap:8px;
+    background:rgba(255,255,255,0.04);
+    border-radius:100px;
+    padding:4px;
+    margin-bottom:8px;
+  }
+  .mode-tab{
+    border:none;
+    background:transparent;
+    color:var(--ink-dim);
+    font-size:13.5px;
+    font-weight:600;
+    padding:8px 16px;
+    border-radius:100px;
+    cursor:pointer;
+  }
+  .mode-tab.active{
+    background:rgba(242,163,65,0.16);
+    color:var(--spark);
+  }
+
+  #talkBtn{
+    position:relative;
+    z-index:2;
+    width:168px;
+    height:168px;
+    border-radius:50%;
+    border:none;
+    background:radial-gradient(circle at 32% 28%, #a4f0d6, var(--mint) 60%, #2e8562 100%);
+    box-shadow:0 18px 40px -12px rgba(95,217,168,0.5), inset 0 -6px 14px rgba(0,0,0,0.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:transform 0.15s ease;
+  }
+  #talkBtn:active{ transform:scale(0.96); }
+  #talkBtn.live{
+    background:radial-gradient(circle at 32% 28%, #ffc478, var(--spark) 60%, var(--spark-dim) 100%);
+    box-shadow:0 18px 40px -12px rgba(242,163,65,0.55), inset 0 -6px 14px rgba(0,0,0,0.2);
+  }
+  #talkBtn svg{ width:56px; height:56px; }
+
+  .bubble{
+    padding:10px 14px;
+    border-radius:16px;
+    font-size:13.5px;
+    line-height:1.4;
+    max-width:88%;
+  }
+  .bubble.user{
+    align-self:flex-end;
+    background:rgba(242,163,65,0.14);
+    color:var(--ink);
+  }
+  .bubble.assistant{
+    align-self:flex-start;
+    background:rgba(255,255,255,0.05);
+    color:var(--ink);
+  }
 </style>
 </head>
 <body>
@@ -187,23 +250,44 @@
   </button>
 
   <div class="stage">
-    <div class="rec-wrap">
-      <div class="ring" id="ring"></div>
-      <button id="recBtn" aria-label="Grabar idea">
-        <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="#171331" stroke-width="1.8">
-          <path d="M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5.5A3.5 3.5 0 0 0 12 15Z"/>
-          <path d="M19 11.5a7 7 0 0 1-14 0"/>
-          <path d="M12 18.5V22"/>
-          <path d="M8.5 22h7"/>
-        </svg>
-      </button>
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabRecord" type="button">🎤 Grabar</button>
+      <button class="mode-tab" id="tabTalk" type="button">💬 Hablar</button>
     </div>
 
-    <div class="status" id="status">Toca para soltar la idea</div>
-    <div class="hint">Un solo toque. No hace falta explicar nada más, solo habla.</div>
+    <div id="recordPanel">
+      <div class="rec-wrap">
+        <div class="ring" id="ring"></div>
+        <button id="recBtn" aria-label="Grabar idea">
+          <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="#171331" stroke-width="1.8">
+            <path d="M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5.5A3.5 3.5 0 0 0 12 15Z"/>
+            <path d="M19 11.5a7 7 0 0 1-14 0"/>
+            <path d="M12 18.5V22"/>
+            <path d="M8.5 22h7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="status" id="status">Toca para soltar la idea</div>
+      <div class="hint">Un solo toque. No hace falta explicar nada más, solo habla.</div>
+    </div>
+
+    <div id="talkPanel" style="display:none; width:100%; flex-direction:column; align-items:center; gap:18px;">
+      <div class="rec-wrap">
+        <div class="ring" id="talkRing"></div>
+        <button id="talkBtn" aria-label="Hablar con Suéltalo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#171331" stroke-width="1.8">
+            <path d="M8 9a4 4 0 0 1 8 0v6a4 4 0 0 1-8 0"/>
+            <path d="M12 3v2M12 19v2M4 12h2M18 12h2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="status" id="talkStatus">Toca para empezar a conversar</div>
+      <div id="transcript" style="width:100%; max-width:380px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto;"></div>
+    </div>
   </div>
 
-  <div class="log">
+  <div class="log" id="logSection">
     <h2>ÚLTIMAS CAPTURAS</h2>
     <ul id="logList"></ul>
   </div>
@@ -270,12 +354,16 @@
   async function handleStop(){
     statusEl.textContent = "Enviando…";
     statusEl.className = "status";
+    recBtn.dataset.busy = '1';
+    recBtn.style.pointerEvents = 'none';
 
     const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
 
     if (blob.size < 500){
       statusEl.textContent = "Muy corto, inténtalo de nuevo";
       statusEl.className = "status";
+      recBtn.dataset.busy = '0';
+      recBtn.style.pointerEvents = 'auto';
       return;
     }
 
@@ -296,6 +384,9 @@
       addLogEntry('err');
     }
 
+    recBtn.dataset.busy = '0';
+    recBtn.style.pointerEvents = 'auto';
+
     setTimeout(() => {
       if (!isRecording){
         statusEl.textContent = "Toca para soltar la idea";
@@ -304,7 +395,9 @@
     }, 2600);
   }
 
-  recBtn.addEventListener('click', () => {
+  recBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (recBtn.dataset.busy === '1') return;
     if (!isRecording) startRecording();
     else stopRecording();
   });
@@ -358,6 +451,159 @@
 
   window.addEventListener('appinstalled', () => {
     installBtn.style.display = 'none';
+  });
+
+  // --- Pestañas ---
+  const tabRecord = document.getElementById('tabRecord');
+  const tabTalk = document.getElementById('tabTalk');
+  const recordPanel = document.getElementById('recordPanel');
+  const talkPanel = document.getElementById('talkPanel');
+  const logSection = document.getElementById('logSection');
+
+  tabRecord.addEventListener('click', () => {
+    tabRecord.classList.add('active');
+    tabTalk.classList.remove('active');
+    recordPanel.style.display = 'flex';
+    talkPanel.style.display = 'none';
+    logSection.style.display = 'block';
+  });
+  tabTalk.addEventListener('click', () => {
+    tabTalk.classList.add('active');
+    tabRecord.classList.remove('active');
+    talkPanel.style.display = 'flex';
+    recordPanel.style.display = 'none';
+    logSection.style.display = 'none';
+  });
+
+  // --- Conversación de voz en tiempo real (OpenAI Realtime vía WebRTC) ---
+  const TOKEN_URL = "https://hook.us2.make.com/jcvxuadtvvq5ycyzvw0atxz9xv95069t";
+  const SAVE_URL = "https://hook.us2.make.com/efezi5f8iihpg6pinxh7f2wgblpouc2f";
+
+  const talkBtn = document.getElementById('talkBtn');
+  const talkStatus = document.getElementById('talkStatus');
+  const talkRing = document.getElementById('talkRing');
+  const transcriptEl = document.getElementById('transcript');
+
+  let pc = null;
+  let dc = null;
+  let micStream = null;
+  let talking = false;
+
+  function addBubble(role, text){
+    if (!text) return;
+    const div = document.createElement('div');
+    div.className = 'bubble ' + role;
+    div.textContent = text;
+    transcriptEl.appendChild(div);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  async function startTalk(){
+    talkStatus.textContent = "Conectando…";
+    try{
+      const tokenRes = await fetch(TOKEN_URL, { method: 'POST' });
+      const tokenData = await tokenRes.json();
+      const ephemeralKey = tokenData?.client_secret?.value;
+      if (!ephemeralKey) throw new Error('sin token');
+
+      pc = new RTCPeerConnection();
+
+      const audioEl = document.createElement('audio');
+      audioEl.autoplay = true;
+      pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
+
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      pc.addTrack(micStream.getTracks()[0]);
+
+      dc = pc.createDataChannel('oai-events');
+      dc.addEventListener('message', handleRealtimeEvent);
+      dc.addEventListener('open', () => {
+        talkStatus.textContent = "Escuchando… habla cuando quieras";
+        talkRing.classList.add('pulse');
+        talkBtn.classList.add('live');
+      });
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const sdpRes = await fetch('https://api.openai.com/v1/realtime/calls', {
+        method: 'POST',
+        body: offer.sdp,
+        headers: {
+          'Authorization': `Bearer ${ephemeralKey}`,
+          'Content-Type': 'application/sdp'
+        }
+      });
+      const answerSdp = await sdpRes.text();
+      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+      talking = true;
+    }catch(err){
+      talkStatus.textContent = "No se pudo conectar, intenta de nuevo";
+      talking = false;
+    }
+  }
+
+  function stopTalk(){
+    talking = false;
+    talkBtn.classList.remove('live');
+    talkRing.classList.remove('pulse');
+    talkStatus.textContent = "Toca para empezar a conversar";
+    if (dc) { try{ dc.close(); }catch(e){} dc = null; }
+    if (pc) { try{ pc.close(); }catch(e){} pc = null; }
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  }
+
+  async function handleRealtimeEvent(e){
+    let event;
+    try { event = JSON.parse(e.data); } catch(err){ return; }
+
+    if (event.type === 'response.output_audio_transcript.delta' && event.delta){
+      let last = transcriptEl.lastElementChild;
+      if (!last || !last.classList.contains('assistant') || last.dataset.final === '1'){
+        addBubble('assistant', '');
+        last = transcriptEl.lastElementChild;
+      }
+      last.textContent += event.delta;
+    }
+    if (event.type === 'response.output_audio_transcript.done'){
+      const last = transcriptEl.lastElementChild;
+      if (last) last.dataset.final = '1';
+    }
+    if (event.type === 'conversation.item.input_audio_transcription.completed' && event.transcript){
+      addBubble('user', event.transcript);
+    }
+
+    if (event.type === 'response.function_call_arguments.done' && event.name === 'guardar_pendiente'){
+      let args = {};
+      try { args = JSON.parse(event.arguments); } catch(err){}
+
+      try{
+        await fetch(SAVE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(args)
+        });
+      }catch(err){}
+
+      const output = {
+        type: 'conversation.item.create',
+        item: {
+          type: 'function_call_output',
+          call_id: event.call_id,
+          output: JSON.stringify({ ok: true })
+        }
+      };
+      dc.send(JSON.stringify(output));
+      dc.send(JSON.stringify({ type: 'response.create' }));
+
+      addLogEntry('ok');
+    }
+  }
+
+  talkBtn.addEventListener('click', () => {
+    if (!talking) startTalk();
+    else stopTalk();
   });
 </script>
 </body>
